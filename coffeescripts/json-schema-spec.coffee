@@ -33,7 +33,12 @@ describe "JsonSchema", ->
       result = @schema.process({age: 200})
       expect(result.value.age).toEqual(200)
       expect(result.valid).toBe(false)
-      expect(result.errors.age).toEqual(["maximum"])
+      expect(result.errors.all()).toEqual([["age", ["maximum"]]])
+
+    it "should use a default value", ->
+      @schema.properties.name.default = "Default"
+      result = @schema.process({})
+      expect(result.value.name).toEqual("Default")
 
   describe "validations", ->
     describe "optional and required fields", ->
@@ -50,8 +55,8 @@ describe "JsonSchema", ->
       it "should validate required fields", ->
         result = @schema.process({})
         expect(result.valid).toBe(false)
-        expect(result.errors.optional).toBe(undefined)
-        expect(result.errors.required).toEqual(["required"])
+        expect(result.errors.on("optional")).toBe(undefined)
+        expect(result.errors.on("required")).toEqual(["required"])
 
     describe "string validations", ->
       beforeEach ->
@@ -74,25 +79,25 @@ describe "JsonSchema", ->
       it "should validate the minLength", ->
         result = @schema.process({minlength: ""})
         expect(result.valid).toBe(false)
-        expect(result.errors.minlength).toEqual(["minLength"])
+        expect(result.errors.on("minlength")).toEqual(["minLength"])
         expect(@schema.process({minlength: "good"}).valid).toBe(true)
 
       it "should validate the maxLength", ->
         result = @schema.process({maxlength: "hello"})
         expect(result.valid).toBe(false)
-        expect(result.errors.maxlength).toEqual(["maxLength"])
+        expect(result.errors.on("maxlength")).toEqual(["maxLength"])
         expect(@schema.process({maxlength: "It"}).valid).toBe(true)
 
       it "should validate the pattern", ->
         result = @schema.process({pattern: "Has Spaces"})
         expect(result.valid).toBe(false)
-        expect(result.errors.pattern).toEqual(["pattern"])
+        expect(result.errors.on("pattern")).toEqual(["pattern"])
         expect(@schema.process({pattern: "nospaces"}).valid).toBe(true)
 
       it "should validate the enum", ->
         result = @schema.process({enum: "four"})
         expect(result.valid).toBe(false)
-        expect(result.errors.enum).toEqual(["enum"])
+        expect(result.errors.on("enum")).toEqual(["enum"])
         expect(@schema.process({enum: "two"}).valid).toBe(true)
 
     describe "date and time", ->
@@ -118,7 +123,7 @@ describe "JsonSchema", ->
       it "should validate a date", ->
         result = @schema.process({date: "09/09/2012"})
         expect(result.valid).toBe(false)
-        expect(result.errors.date).toEqual(["format"])
+        expect(result.errors.on("date")).toEqual(["format"])
 
     describe "number validations", ->
       beforeEach ->
@@ -138,7 +143,7 @@ describe "JsonSchema", ->
       it "should validate maximum", ->
         result = @schema.process({number: 100})
         expect(result.valid).toBe(false)
-        expect(result.errors.number).toEqual(["maximum"])
+        expect(result.errors.on("number")).toEqual(["maximum"])
 
       it "should accept a value equal to maximum", ->
         expect(@schema.process({number: 50}).valid).toBe(true)
@@ -146,7 +151,7 @@ describe "JsonSchema", ->
       it "should validate minimum", ->
         result = @schema.process({number: 0})
         expect(result.valid).toBe(false)
-        expect(result.errors.number).toEqual(["minimum"])
+        expect(result.errors.on("number")).toEqual(["minimum"])
 
       it "should accept a value equal to minimum", ->
         expect(@schema.process({number: 10}).valid).toBe(true)
@@ -154,24 +159,24 @@ describe "JsonSchema", ->
       it "should validate divisibleBy" , ->
         result = @schema.process({number: 35})
         expect(result.valid).toBe(false)
-        expect(result.errors.number).toEqual(["divisibleBy"])
+        expect(result.errors.on("number")).toEqual(["divisibleBy"])
 
       it "should validate both divisibleBy and minimum", ->
         result = @schema.process({number: 5})
         expect(result.valid).toBe(false)
-        expect(result.errors.number).toEqual(["minimum", "divisibleBy"])
+        expect(result.errors.on("number")).toEqual(["minimum", "divisibleBy"])
 
       it "should handle excludeMinimum", ->
         @schema.properties.number.excludeMinimum = true
         expect(@schema.process({number: 20}).valid).toBe(true)
         expect(@schema.process({number: 10}).valid).toBe(false)
-        expect(@schema.process({number: 10}).errors.number).toEqual(["minimum"])
+        expect(@schema.process({number: 10}).errors.on("number")).toEqual(["minimum"])
 
       it "should handle excludeMaximum", ->
         @schema.properties.number.excludeMaximum = true
         expect(@schema.process({number: 20}).valid).toBe(true)
         expect(@schema.process({number: 50}).valid).toBe(false)
-        expect(@schema.process({number: 50}).errors.number).toEqual(["maximum"])
+        expect(@schema.process({number: 50}).errors.on("number")).toEqual(["maximum"])
 
   describe "arrays", ->
     beforeEach ->
@@ -190,14 +195,14 @@ describe "JsonSchema", ->
       @schema.properties.array.minItems = 3
       result = @schema.process({array: [1,2]})
       expect(result.valid).toBe(false)
-      expect(result.errors.array).toEqual(["minItems"])
+      expect(result.errors.on("array")).toEqual(["minItems"])
       expect(@schema.process({array: [1,2,3]}).valid).toBe(true)
 
     it "should validate maxItems", ->
       @schema.properties.array.maxItems = 3
       result = @schema.process({array: [1,2,3,4]})
       expect(result.valid).toBe(false)
-      expect(result.errors.array).toEqual(["maxItems"])
+      expect(result.errors.on("array")).toEqual(["maxItems"])
       expect(@schema.process({array: [1,2,3]}).valid).toBe(true)
 
     describe "with numerical items", ->
@@ -214,7 +219,9 @@ describe "JsonSchema", ->
         @schema.properties.array.items.minimum = 3
         result = @schema.process({array: [1, 2, 3]})
         expect(result.valid).toBe(false)
-        expect(result.errors.array).toEqual(["minimum"])
+        expect(result.errors.on("array.0")).toEqual(["minimum"])
+        expect(result.errors.on("array.1")).toEqual(["minimum"])
+        expect(result.errors.on("array.2")).toBe(undefined)
 
   describe "objects", ->
     beforeEach ->
@@ -235,6 +242,70 @@ describe "JsonSchema", ->
       @schema.properties.object.properties.test.minLength = 8
       result = @schema.process({object: {test: "Hello"}})
       expect(result.valid).toBe(false)
-      expect(result.errors.object.test).toEqual(["minLength"])
+      expect(result.errors.on("object.test")).toEqual(["minLength"])
 
+    it "should not make the object required when an property is required", ->
+      @schema.properties.object.properties.test.required = true
+      result = @schema.process({})
+      console.log(result)
+      expect(result.valid).toBe(true)
+
+  describe "resolving refs", ->
+    beforeEach ->
+      schemas =
+        person:
+          type: "object"
+          properties:
+            name:
+              type: "string"
+              required: true
+        party:
+          type: "object"
+          properties:
+            host:
+              type: "object"
+              properties:
+                "$ref": "person#.properties"
+            guests:
+              type: "array"
+              items:
+                "$ref": "person"
+
+      JsonSchema.resolver = (uri, current) ->
+        attr = schemas[uri]
+        new JsonSchema(attr) if attr
       
+      @schema = JsonSchema.resolver("party")
+    
+    it "should resolve an object reference", ->
+      result = @schema.process({host: {name: "Mathias"}})
+      expect(result.value.host.name).toEqual("Mathias")
+      expect(result.valid).toBe(true)
+      
+      bad = @schema.process({host: {}})
+      expect(bad.valid).toBe(false)
+      expect(bad.errors.on("host.name")).toEqual(["required"])
+
+    it "should resolve array references", ->
+      result = @schema.process({guests: [{name: "Irene"}, {name: "Julio"}]})
+      expect(result.value.guests[0].name).toEqual("Irene")
+      expect(result.value.guests[1].name).toEqual("Julio")
+      
+      bad = @schema.process({guests: [{name: "Irene"}, {}]})
+      expect(bad.valid).toBe(false)
+      expect(bad.errors.on("guests.1.name")).toEqual(["required"])
+
+describe "JsonErrors", ->
+  it "should handle merging nested error objects", ->
+    errors = new JsonErrors
+    errors.add("required")
+
+    arrayErrors = new JsonErrors
+    arrayErrors.add("minItems")
+    arrayErrors.add("0", "numeric")
+
+    errors.add("array", arrayErrors)
+    
+    expect(errors.on("")).toEqual(["required"])
+    expect(errors.on("array")).toEqual(["minItems"])
+    expect(errors.on("array.0")).toEqual(["numeric"])

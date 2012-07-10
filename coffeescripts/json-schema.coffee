@@ -1,21 +1,64 @@
+class JsonErrors
+  constructor: ->
+    @base = []
+    @attr = {}
+  
+  add: (property, error) ->
+    if not error?
+      error = property
+      property = null
+
+    return unless error
+    
+    if property
+      if error instanceof JsonErrors then @_mergeErrors(property, error) else @_addError(property, error)
+    else
+      @base.push error
+    this
+
+  addToBase: (error) -> @add(error)
+
+  on: (property) -> if property then @attr[property] else @base
+  onBase: -> @on()
+  
+  all: ->
+    base = if @base.length then [["", @base]] else []
+    base.concat([key, err] for key, err of @attr)
+
+  isEmpty: -> @base.length == 0 && Object.keys(@attr).length == 0
+
+  _addError: (property, error) ->
+    @attr[property] ||= []
+    if error.length
+      @attr[property] = @attr[property].concat(error)
+    else
+      @attr[property].push error
+  
+  _mergeErrors: (property, errors) ->
+    return if errors.isEmpty()
+    for [prop, err] in errors.all()
+      newProp = if prop then "#{property}.#{prop}" else property
+      @add(newProp, err)
+
+
 class JsonProperty
   constructor: (@attr) ->
 
   cast: (val) -> val
 
   errors: (val) ->
-    errors = []
-    errors.push("required") unless @validate "required", (r) -> !(r && typeof(val) == "undefined")
+    errors = new JsonErrors
+    errors.add("required") unless @validate "required", (r) -> !(r && typeof(val) == "undefined")
     errors
 
   process: (val) ->
-    val        = if val? then @cast(val) else val
+    val    = if val? then @cast(val) else @attr.default
     errors = @errors(val)
     
-    valid: errors.length == 0
+    valid: errors.isEmpty()
     value: val
     errors: errors
-  
+
   validate: (attr, fn) -> if (attr of @attr) then fn.call(this, @attr[attr]) else true
 
 
@@ -30,11 +73,11 @@ class JsonString extends JsonProperty
   errors: (val) ->
     errors = super(val)
     if val?
-      errors.push("minLength") unless @validate "minLength", (len)  -> val.length >= len
-      errors.push("maxLength") unless @validate "maxLength", (len)  -> val.length <= len
-      errors.push("pattern")   unless @validate "pattern",   (pat)  -> new RegExp(pat).test(val)
-      errors.push("enum")      unless @validate "enum",      (opts) -> val in opts
-      errors.push("format")    unless @validate "format",    (format) -> @validFormat(format, val)
+      errors.add("minLength") unless @validate "minLength", (len)  -> val.length >= len
+      errors.add("maxLength") unless @validate "maxLength", (len)  -> val.length <= len
+      errors.add("pattern")   unless @validate "pattern",   (pat)  -> new RegExp(pat).test(val)
+      errors.add("enum")      unless @validate "enum",      (opts) -> val in opts
+      errors.add("format")    unless @validate "format",    (format) -> @validFormat(format, val)
     errors
 
   validFormat: (format, val) ->
@@ -44,7 +87,8 @@ class JsonString extends JsonProperty
       when "date-time"
         /^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(val)
       else
-        truen
+        true
+
 
 class JsonNumber extends JsonProperty
   cast: (val) ->
@@ -54,9 +98,9 @@ class JsonNumber extends JsonProperty
   errors: (val) ->
     errors = super(val)
     if val?
-      errors.push("minimum")     unless @validate "minimum", (min) -> if @attr.excludeMinimum then val > min else val >= min
-      errors.push("maximum")     unless @validate "maximum", (max) -> if @attr.excludeMaximum then val < max else val <= max
-      errors.push("divisibleBy") unless @validate "divisibleBy", (div) -> val % div == 0
+      errors.add("minimum")     unless @validate "minimum", (min) -> if @attr.excludeMinimum then val > min else val >= min
+      errors.add("maximum")     unless @validate "maximum", (max) -> if @attr.excludeMaximum then val < max else val <= max
+      errors.add("divisibleBy") unless @validate "divisibleBy", (div) -> val % div == 0
     errors
 
 
@@ -68,7 +112,9 @@ class JsonInteger extends JsonNumber
 
 class JsonArray extends JsonProperty
   constructor: (@attr) ->
-    @itemSchema = @attr.items && JsonProperty.for(@attr.items)
+    if @attr.items
+      ref = @attr.items["$ref"]
+      @itemSchema = if ref then JsonSchema.resolver(@attr.items["$ref"], this) else JsonProperty.for(@attr.items)
 
   cast: (val) ->
     cast = if @itemSchema then (v) => @itemSchema.cast(v) else (v) -> v
@@ -77,35 +123,44 @@ class JsonArray extends JsonProperty
   errors: (val) ->
     errors = super(val)
     if val?
-      errors.push("minItems") unless @validate "minItems", (min) -> val.length >= min
-      errors.push("maxItems") unless @validate "maxItems", (max) -> val.length <= max
-      errors = errors.concat(@itemErrors(val)) if @itemSchema
+      errors.add("minItems") unless @validate "minItems", (min) -> val.length >= min
+      errors.add("maxItems") unless @validate "maxItems", (max) -> val.length <= max
+      if @itemSchema
+        errors.add("#{i}", @itemSchema.errors(item)) for item, i in val
     errors
-
-  itemErrors: (val) ->
-    valueErrors = {}
-    for item in val
-      for err in @itemSchema.errors(item)
-        valueErrors[err] = true
-    Object.keys(valueErrors)
 
 
 class JsonObject extends JsonProperty
   constructor: (@attr) ->
     @properties = attr.properties
+    if @properties["$ref"]
+      @ref = JsonSchema.resolver(@properties["$ref"].replace(/#.+$/, ''), this)
+  
+  cast: (val) ->
+    return @ref.cast(val) if @ref
 
-  process: (obj) ->
-    ret = {valid: true, errors: {}, value: {}}
+    obj = {}
     for key, attrs of @properties
-      prop = JsonProperty.for(attrs).process(obj[key])
-      ret.value[key] = prop.value
-      ret.valid = ret.valid && prop.valid
-      ret.errors[key] = prop.errors unless prop.valid
-    ret
+      obj[key] = if val && (key of val) then JsonProperty.for(attrs).cast(val[key]) else attrs.default
+    obj
+
+  process: (val) ->
+    if @ref then @ref.process(val) else super(val)
+  
+  errors: (val) ->
+    return super(val) unless val?
+    return @ref.errors(val) if @ref
+    
+    errors = super(val)
+    
+    for key, attrs of @properties
+      err = JsonProperty.for(attrs).errors(val && val[key])
+      errors.add(key, err)
+    errors
 
 
 JsonProperty.for = (attr) ->
-  type  = attr.type || "any"
+  type  = attr.type || "any"  
   klass = {
     "any"     : JsonProperty
     "string"  : JsonString
@@ -122,8 +177,11 @@ JsonProperty.for = (attr) ->
 class JsonSchema extends JsonObject
 
 
+JsonSchema.resolver = (url, current) ->
+  # Override to resolve references
+  throw "No resolver defined for references" unless JsonSchema.resolver
 
-if exports?
-  exports.JsonSchema = JsonSchema
-else if window?
-  window.JsonSchema  = JsonSchema
+
+e = (exports? && exports) || (window? && window)
+e.JsonSchema = JsonSchema
+e.JsonErrors = JsonErrors

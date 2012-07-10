@@ -45,14 +45,20 @@
         expect(result.value.age).toEqual(35);
         return expect(result.valid).toBe(true);
       });
-      return it("should validate the maximum for a number", function() {
+      it("should validate the maximum for a number", function() {
         var result;
         result = this.schema.process({
           age: 200
         });
         expect(result.value.age).toEqual(200);
         expect(result.valid).toBe(false);
-        return expect(result.errors.age).toEqual(["maximum"]);
+        return expect(result.errors.all()).toEqual([["age", ["maximum"]]]);
+      });
+      return it("should use a default value", function() {
+        var result;
+        this.schema.properties.name["default"] = "Default";
+        result = this.schema.process({});
+        return expect(result.value.name).toEqual("Default");
       });
     });
     describe("validations", function() {
@@ -75,8 +81,8 @@
           var result;
           result = this.schema.process({});
           expect(result.valid).toBe(false);
-          expect(result.errors.optional).toBe(void 0);
-          return expect(result.errors.required).toEqual(["required"]);
+          expect(result.errors.on("optional")).toBe(void 0);
+          return expect(result.errors.on("required")).toEqual(["required"]);
         });
       });
       describe("string validations", function() {
@@ -109,7 +115,7 @@
             minlength: ""
           });
           expect(result.valid).toBe(false);
-          expect(result.errors.minlength).toEqual(["minLength"]);
+          expect(result.errors.on("minlength")).toEqual(["minLength"]);
           return expect(this.schema.process({
             minlength: "good"
           }).valid).toBe(true);
@@ -120,7 +126,7 @@
             maxlength: "hello"
           });
           expect(result.valid).toBe(false);
-          expect(result.errors.maxlength).toEqual(["maxLength"]);
+          expect(result.errors.on("maxlength")).toEqual(["maxLength"]);
           return expect(this.schema.process({
             maxlength: "It"
           }).valid).toBe(true);
@@ -131,7 +137,7 @@
             pattern: "Has Spaces"
           });
           expect(result.valid).toBe(false);
-          expect(result.errors.pattern).toEqual(["pattern"]);
+          expect(result.errors.on("pattern")).toEqual(["pattern"]);
           return expect(this.schema.process({
             pattern: "nospaces"
           }).valid).toBe(true);
@@ -142,7 +148,7 @@
             "enum": "four"
           });
           expect(result.valid).toBe(false);
-          expect(result.errors["enum"]).toEqual(["enum"]);
+          expect(result.errors.on("enum")).toEqual(["enum"]);
           return expect(this.schema.process({
             "enum": "two"
           }).valid).toBe(true);
@@ -184,7 +190,7 @@
             date: "09/09/2012"
           });
           expect(result.valid).toBe(false);
-          return expect(result.errors.date).toEqual(["format"]);
+          return expect(result.errors.on("date")).toEqual(["format"]);
         });
       });
       return describe("number validations", function() {
@@ -214,7 +220,7 @@
             number: 100
           });
           expect(result.valid).toBe(false);
-          return expect(result.errors.number).toEqual(["maximum"]);
+          return expect(result.errors.on("number")).toEqual(["maximum"]);
         });
         it("should accept a value equal to maximum", function() {
           return expect(this.schema.process({
@@ -227,7 +233,7 @@
             number: 0
           });
           expect(result.valid).toBe(false);
-          return expect(result.errors.number).toEqual(["minimum"]);
+          return expect(result.errors.on("number")).toEqual(["minimum"]);
         });
         it("should accept a value equal to minimum", function() {
           return expect(this.schema.process({
@@ -240,7 +246,7 @@
             number: 35
           });
           expect(result.valid).toBe(false);
-          return expect(result.errors.number).toEqual(["divisibleBy"]);
+          return expect(result.errors.on("number")).toEqual(["divisibleBy"]);
         });
         it("should validate both divisibleBy and minimum", function() {
           var result;
@@ -248,7 +254,7 @@
             number: 5
           });
           expect(result.valid).toBe(false);
-          return expect(result.errors.number).toEqual(["minimum", "divisibleBy"]);
+          return expect(result.errors.on("number")).toEqual(["minimum", "divisibleBy"]);
         });
         it("should handle excludeMinimum", function() {
           this.schema.properties.number.excludeMinimum = true;
@@ -260,7 +266,7 @@
           }).valid).toBe(false);
           return expect(this.schema.process({
             number: 10
-          }).errors.number).toEqual(["minimum"]);
+          }).errors.on("number")).toEqual(["minimum"]);
         });
         return it("should handle excludeMaximum", function() {
           this.schema.properties.number.excludeMaximum = true;
@@ -272,7 +278,7 @@
           }).valid).toBe(false);
           return expect(this.schema.process({
             number: 50
-          }).errors.number).toEqual(["maximum"]);
+          }).errors.on("number")).toEqual(["maximum"]);
         });
       });
     });
@@ -302,7 +308,7 @@
           array: [1, 2]
         });
         expect(result.valid).toBe(false);
-        expect(result.errors.array).toEqual(["minItems"]);
+        expect(result.errors.on("array")).toEqual(["minItems"]);
         return expect(this.schema.process({
           array: [1, 2, 3]
         }).valid).toBe(true);
@@ -314,7 +320,7 @@
           array: [1, 2, 3, 4]
         });
         expect(result.valid).toBe(false);
-        expect(result.errors.array).toEqual(["maxItems"]);
+        expect(result.errors.on("array")).toEqual(["maxItems"]);
         return expect(this.schema.process({
           array: [1, 2, 3]
         }).valid).toBe(true);
@@ -340,11 +346,13 @@
             array: [1, 2, 3]
           });
           expect(result.valid).toBe(false);
-          return expect(result.errors.array).toEqual(["minimum"]);
+          expect(result.errors.on("array.0")).toEqual(["minimum"]);
+          expect(result.errors.on("array.1")).toEqual(["minimum"]);
+          return expect(result.errors.on("array.2")).toBe(void 0);
         });
       });
     });
-    return describe("objects", function() {
+    describe("objects", function() {
       beforeEach(function() {
         return this.schema = new JsonSchema({
           type: "object",
@@ -369,7 +377,7 @@
         });
         return expect(result.value.object.test).toEqual("Hello");
       });
-      return it("should validate properties on the object", function() {
+      it("should validate properties on the object", function() {
         var result;
         this.schema.properties.object.properties.test.minLength = 8;
         result = this.schema.process({
@@ -378,8 +386,109 @@
           }
         });
         expect(result.valid).toBe(false);
-        return expect(result.errors.object.test).toEqual(["minLength"]);
+        return expect(result.errors.on("object.test")).toEqual(["minLength"]);
       });
+      return it("should not make the object required when an property is required", function() {
+        var result;
+        this.schema.properties.object.properties.test.required = true;
+        result = this.schema.process({});
+        console.log(result);
+        return expect(result.valid).toBe(true);
+      });
+    });
+    return describe("resolving refs", function() {
+      beforeEach(function() {
+        var schemas;
+        schemas = {
+          person: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+                required: true
+              }
+            }
+          },
+          party: {
+            type: "object",
+            properties: {
+              host: {
+                type: "object",
+                properties: {
+                  "$ref": "person#.properties"
+                }
+              },
+              guests: {
+                type: "array",
+                items: {
+                  "$ref": "person"
+                }
+              }
+            }
+          }
+        };
+        JsonSchema.resolver = function(uri, current) {
+          var attr;
+          attr = schemas[uri];
+          if (attr) {
+            return new JsonSchema(attr);
+          }
+        };
+        return this.schema = JsonSchema.resolver("party");
+      });
+      it("should resolve an object reference", function() {
+        var bad, result;
+        result = this.schema.process({
+          host: {
+            name: "Mathias"
+          }
+        });
+        expect(result.value.host.name).toEqual("Mathias");
+        expect(result.valid).toBe(true);
+        bad = this.schema.process({
+          host: {}
+        });
+        expect(bad.valid).toBe(false);
+        return expect(bad.errors.on("host.name")).toEqual(["required"]);
+      });
+      return it("should resolve array references", function() {
+        var bad, result;
+        result = this.schema.process({
+          guests: [
+            {
+              name: "Irene"
+            }, {
+              name: "Julio"
+            }
+          ]
+        });
+        expect(result.value.guests[0].name).toEqual("Irene");
+        expect(result.value.guests[1].name).toEqual("Julio");
+        bad = this.schema.process({
+          guests: [
+            {
+              name: "Irene"
+            }, {}
+          ]
+        });
+        expect(bad.valid).toBe(false);
+        return expect(bad.errors.on("guests.1.name")).toEqual(["required"]);
+      });
+    });
+  });
+
+  describe("JsonErrors", function() {
+    return it("should handle merging nested error objects", function() {
+      var arrayErrors, errors;
+      errors = new JsonErrors;
+      errors.add("required");
+      arrayErrors = new JsonErrors;
+      arrayErrors.add("minItems");
+      arrayErrors.add("0", "numeric");
+      errors.add("array", arrayErrors);
+      expect(errors.on("")).toEqual(["required"]);
+      expect(errors.on("array")).toEqual(["minItems"]);
+      return expect(errors.on("array.0")).toEqual(["numeric"]);
     });
   });
 
