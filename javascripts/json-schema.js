@@ -13,23 +13,22 @@
     }
 
     JsonErrors.prototype.add = function(property, error) {
+      if (!(property || error)) {
+        return;
+      }
       if (!(error != null)) {
         error = property;
         property = null;
       }
-      if (!error) {
-        return;
-      }
       if (property) {
         if (error instanceof JsonErrors) {
-          this._mergeErrors(property, error);
+          return this._mergeErrors(property, error);
         } else {
-          this._addError(property, error);
+          return this._addError(property, error);
         }
       } else {
-        this.base.push(error);
+        return this.base.push(error);
       }
-      return this;
     };
 
     JsonErrors.prototype.addToBase = function(error) {
@@ -123,7 +122,7 @@
       errors = this.errors(val);
       return {
         valid: errors.isEmpty(),
-        value: val,
+        doc: val,
         errors: errors
       };
     };
@@ -413,15 +412,18 @@
 
     __extends(JsonSchema, _super);
 
-    function JsonSchema() {
-      return JsonSchema.__super__.constructor.apply(this, arguments);
+    function JsonSchema(attr) {
+      if (attr.type !== "object") {
+        throw "The main schema must be of type \"object\"";
+      }
+      JsonSchema.__super__.constructor.call(this, attr);
     }
 
     return JsonSchema;
 
   })(JsonObject);
 
-  JsonSchema.resolver = function(url, current) {
+  JsonSchema.resolver = function(url) {
     if (!JsonSchema.resolver) {
       throw "No resolver defined for references";
     }

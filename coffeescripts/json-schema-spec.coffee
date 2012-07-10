@@ -12,33 +12,33 @@ describe "JsonSchema", ->
 
     it "should process an empty object", ->
       result = @schema.process({})
-      expect(Object.keys(result.value)).toEqual(['name', 'age'])
-      expect(result.value.name).toBe(undefined)
-      expect(result.value.age).toBe(undefined)
+      expect(Object.keys(result.doc)).toEqual(['name', 'age'])
+      expect(result.doc.name).toBe(undefined)
+      expect(result.doc.age).toBe(undefined)
       expect(result.valid).toBe(true)
 
     it "should process a valid object", ->
       result = @schema.process({name: "Mathias", age: 35})
-      expect(Object.keys(result.value)).toEqual(["name", "age"])
-      expect(result.value.name).toEqual("Mathias")
-      expect(result.value.age).toEqual(35)
+      expect(Object.keys(result.doc)).toEqual(["name", "age"])
+      expect(result.doc.name).toEqual("Mathias")
+      expect(result.doc.age).toEqual(35)
       expect(result.valid).toBe(true)
 
     it "should cast strings to numbers where needed", ->
       result = @schema.process({age: "35"})
-      expect(result.value.age).toEqual(35)
+      expect(result.doc.age).toEqual(35)
       expect(result.valid).toBe(true)
 
     it "should validate the maximum for a number", ->
       result = @schema.process({age: 200})
-      expect(result.value.age).toEqual(200)
+      expect(result.doc.age).toEqual(200)
       expect(result.valid).toBe(false)
       expect(result.errors.all()).toEqual([["age", ["maximum"]]])
 
     it "should use a default value", ->
       @schema.properties.name.default = "Default"
       result = @schema.process({})
-      expect(result.value.name).toEqual("Default")
+      expect(result.doc.name).toEqual("Default")
 
   describe "validations", ->
     describe "optional and required fields", ->
@@ -114,11 +114,11 @@ describe "JsonSchema", ->
 
       it "should process a date", ->
         result = @schema.process({date: "2012-07-09"})
-        expect(result.value.date.getFullYear()).toEqual(2012)
+        expect(result.doc.date.getFullYear()).toEqual(2012)
 
       it "should process a date-time", ->
         result = @schema.process({datetime: "2012-07-09T12:09:18Z"})
-        expect(result.value.datetime.getFullYear()).toEqual(2012)
+        expect(result.doc.datetime.getFullYear()).toEqual(2012)
 
       it "should validate a date", ->
         result = @schema.process({date: "09/09/2012"})
@@ -189,7 +189,7 @@ describe "JsonSchema", ->
     it "should handle array values", ->
       result = @schema.process({array: [1,"2",3]})
       expect(result.valid).toBe(true)
-      expect(result.value.array).toEqual([1,"2",3])
+      expect(result.doc.array).toEqual([1,"2",3])
 
     it "should validate minItems", ->
       @schema.properties.array.minItems = 3
@@ -213,7 +213,7 @@ describe "JsonSchema", ->
       it "should cast array values", ->
         result = @schema.process({array: ["1", "2", "3"]})
         expect(result.valid).toBe(true)
-        expect(result.value.array).toEqual([1,2,3])
+        expect(result.doc.array).toEqual([1,2,3])
 
       it "should validate array values", ->
         @schema.properties.array.items.minimum = 3
@@ -236,7 +236,7 @@ describe "JsonSchema", ->
 
     it "should process an object", ->
       result = @schema.process({object: {test: "Hello"}})
-      expect(result.value.object.test).toEqual("Hello")
+      expect(result.doc.object.test).toEqual("Hello")
 
     it "should validate properties on the object", ->
       @schema.properties.object.properties.test.minLength = 8
@@ -279,7 +279,7 @@ describe "JsonSchema", ->
     
     it "should resolve an object reference", ->
       result = @schema.process({host: {name: "Mathias"}})
-      expect(result.value.host.name).toEqual("Mathias")
+      expect(result.doc.host.name).toEqual("Mathias")
       expect(result.valid).toBe(true)
       
       bad = @schema.process({host: {}})
@@ -288,8 +288,8 @@ describe "JsonSchema", ->
 
     it "should resolve array references", ->
       result = @schema.process({guests: [{name: "Irene"}, {name: "Julio"}]})
-      expect(result.value.guests[0].name).toEqual("Irene")
-      expect(result.value.guests[1].name).toEqual("Julio")
+      expect(result.doc.guests[0].name).toEqual("Irene")
+      expect(result.doc.guests[1].name).toEqual("Julio")
       
       bad = @schema.process({guests: [{name: "Irene"}, {}]})
       expect(bad.valid).toBe(false)

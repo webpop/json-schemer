@@ -21,9 +21,9 @@
       it("should process an empty object", function() {
         var result;
         result = this.schema.process({});
-        expect(Object.keys(result.value)).toEqual(['name', 'age']);
-        expect(result.value.name).toBe(void 0);
-        expect(result.value.age).toBe(void 0);
+        expect(Object.keys(result.doc)).toEqual(['name', 'age']);
+        expect(result.doc.name).toBe(void 0);
+        expect(result.doc.age).toBe(void 0);
         return expect(result.valid).toBe(true);
       });
       it("should process a valid object", function() {
@@ -32,9 +32,9 @@
           name: "Mathias",
           age: 35
         });
-        expect(Object.keys(result.value)).toEqual(["name", "age"]);
-        expect(result.value.name).toEqual("Mathias");
-        expect(result.value.age).toEqual(35);
+        expect(Object.keys(result.doc)).toEqual(["name", "age"]);
+        expect(result.doc.name).toEqual("Mathias");
+        expect(result.doc.age).toEqual(35);
         return expect(result.valid).toBe(true);
       });
       it("should cast strings to numbers where needed", function() {
@@ -42,7 +42,7 @@
         result = this.schema.process({
           age: "35"
         });
-        expect(result.value.age).toEqual(35);
+        expect(result.doc.age).toEqual(35);
         return expect(result.valid).toBe(true);
       });
       it("should validate the maximum for a number", function() {
@@ -50,7 +50,7 @@
         result = this.schema.process({
           age: 200
         });
-        expect(result.value.age).toEqual(200);
+        expect(result.doc.age).toEqual(200);
         expect(result.valid).toBe(false);
         return expect(result.errors.all()).toEqual([["age", ["maximum"]]]);
       });
@@ -58,7 +58,7 @@
         var result;
         this.schema.properties.name["default"] = "Default";
         result = this.schema.process({});
-        return expect(result.value.name).toEqual("Default");
+        return expect(result.doc.name).toEqual("Default");
       });
     });
     describe("validations", function() {
@@ -175,14 +175,14 @@
           result = this.schema.process({
             date: "2012-07-09"
           });
-          return expect(result.value.date.getFullYear()).toEqual(2012);
+          return expect(result.doc.date.getFullYear()).toEqual(2012);
         });
         it("should process a date-time", function() {
           var result;
           result = this.schema.process({
             datetime: "2012-07-09T12:09:18Z"
           });
-          return expect(result.value.datetime.getFullYear()).toEqual(2012);
+          return expect(result.doc.datetime.getFullYear()).toEqual(2012);
         });
         return it("should validate a date", function() {
           var result;
@@ -299,7 +299,7 @@
           array: [1, "2", 3]
         });
         expect(result.valid).toBe(true);
-        return expect(result.value.array).toEqual([1, "2", 3]);
+        return expect(result.doc.array).toEqual([1, "2", 3]);
       });
       it("should validate minItems", function() {
         var result;
@@ -337,7 +337,7 @@
             array: ["1", "2", "3"]
           });
           expect(result.valid).toBe(true);
-          return expect(result.value.array).toEqual([1, 2, 3]);
+          return expect(result.doc.array).toEqual([1, 2, 3]);
         });
         return it("should validate array values", function() {
           var result;
@@ -375,7 +375,7 @@
             test: "Hello"
           }
         });
-        return expect(result.value.object.test).toEqual("Hello");
+        return expect(result.doc.object.test).toEqual("Hello");
       });
       it("should validate properties on the object", function() {
         var result;
@@ -443,7 +443,7 @@
             name: "Mathias"
           }
         });
-        expect(result.value.host.name).toEqual("Mathias");
+        expect(result.doc.host.name).toEqual("Mathias");
         expect(result.valid).toBe(true);
         bad = this.schema.process({
           host: {}
@@ -462,8 +462,8 @@
             }
           ]
         });
-        expect(result.value.guests[0].name).toEqual("Irene");
-        expect(result.value.guests[1].name).toEqual("Julio");
+        expect(result.doc.guests[0].name).toEqual("Irene");
+        expect(result.doc.guests[1].name).toEqual("Julio");
         bad = this.schema.process({
           guests: [
             {
