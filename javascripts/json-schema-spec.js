@@ -19,46 +19,62 @@
         });
       });
       it("should process an empty object", function() {
-        var result;
-        result = this.schema.process({});
-        expect(Object.keys(result.doc)).toEqual(['name', 'age']);
-        expect(result.doc.name).toBe(void 0);
-        expect(result.doc.age).toBe(void 0);
-        return expect(result.valid).toBe(true);
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({}, function(err, result) {
+            console.log("Got %o", result);
+            expect(Object.keys(result.doc)).toEqual(['name', 'age']);
+            expect(result.doc.name).toBe(void 0);
+            expect(result.doc.age).toBe(void 0);
+            return expect(result.valid).toBe(true);
+          });
+        });
       });
       it("should process a valid object", function() {
-        var result;
-        result = this.schema.process({
-          name: "Mathias",
-          age: 35
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({
+            name: "Mathias",
+            age: 35
+          }, function(err, result) {
+            expect(Object.keys(result.doc)).toEqual(["name", "age"]);
+            expect(result.doc.name).toEqual("Mathias");
+            expect(result.doc.age).toEqual(35);
+            return expect(result.valid).toBe(true);
+          });
         });
-        expect(Object.keys(result.doc)).toEqual(["name", "age"]);
-        expect(result.doc.name).toEqual("Mathias");
-        expect(result.doc.age).toEqual(35);
-        return expect(result.valid).toBe(true);
       });
       it("should cast strings to numbers where needed", function() {
-        var result;
-        result = this.schema.process({
-          age: "35"
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({
+            age: "35"
+          }, function(err, result) {
+            expect(result.doc.age).toEqual(35);
+            return expect(result.valid).toBe(true);
+          });
         });
-        expect(result.doc.age).toEqual(35);
-        return expect(result.valid).toBe(true);
       });
       it("should validate the maximum for a number", function() {
-        var result;
-        result = this.schema.process({
-          age: 200
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({
+            age: 200
+          }, function(err, result) {
+            expect(result.doc.age).toEqual(200);
+            expect(result.valid).toBe(false);
+            return expect(result.errors.all()).toEqual([["age", ["maximum"]]]);
+          });
         });
-        expect(result.doc.age).toEqual(200);
-        expect(result.valid).toBe(false);
-        return expect(result.errors.all()).toEqual([["age", ["maximum"]]]);
       });
       return it("should use a default value", function() {
-        var result;
         this.schema.properties.name["default"] = "Default";
-        result = this.schema.process({});
-        return expect(result.doc.name).toEqual("Default");
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({}, function(err, result) {
+            return expect(result.doc.name).toEqual("Default");
+          });
+        });
       });
     });
     describe("validations", function() {
@@ -78,11 +94,14 @@
           });
         });
         return it("should validate required fields", function() {
-          var result;
-          result = this.schema.process({});
-          expect(result.valid).toBe(false);
-          expect(result.errors.on("optional")).toBe(void 0);
-          return expect(result.errors.on("required")).toEqual(["required"]);
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({}, function(err, result) {
+              expect(result.valid).toBe(false);
+              expect(result.errors.on("optional")).toBe(void 0);
+              return expect(result.errors.on("required")).toEqual(["required"]);
+            });
+          });
         });
       });
       describe("string validations", function() {
@@ -110,48 +129,80 @@
           });
         });
         it("should validate the minLength", function() {
-          var result;
-          result = this.schema.process({
-            minlength: ""
+          runs(function() {
+            var _this = this;
+            return this.schema.process({
+              minlength: ""
+            }, function(err, result) {
+              expect(result.valid).toBe(false);
+              return expect(result.errors.on("minlength")).toEqual(["minLength"]);
+            });
           });
-          expect(result.valid).toBe(false);
-          expect(result.errors.on("minlength")).toEqual(["minLength"]);
-          return expect(this.schema.process({
-            minlength: "good"
-          }).valid).toBe(true);
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              minlength: "good"
+            }, function(err, result) {
+              return expect(result.valid).toBe(true);
+            });
+          });
         });
         it("should validate the maxLength", function() {
-          var result;
-          result = this.schema.process({
-            maxlength: "hello"
+          runs(function() {
+            var _this = this;
+            return this.schema.process({
+              maxlength: "hello"
+            }, function(err, result) {
+              expect(result.valid).toBe(false);
+              return expect(result.errors.on("maxlength")).toEqual(["maxLength"]);
+            });
           });
-          expect(result.valid).toBe(false);
-          expect(result.errors.on("maxlength")).toEqual(["maxLength"]);
-          return expect(this.schema.process({
-            maxlength: "It"
-          }).valid).toBe(true);
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              maxlength: "It"
+            }, function(err, result) {
+              return expect(result.valid).toBe(true);
+            });
+          });
         });
         it("should validate the pattern", function() {
-          var result;
-          result = this.schema.process({
-            pattern: "Has Spaces"
+          runs(function() {
+            var _this = this;
+            return this.schema.process({
+              pattern: "Has Spaces"
+            }, function(err, result) {
+              expect(result.valid).toBe(false);
+              return expect(result.errors.on("pattern")).toEqual(["pattern"]);
+            });
           });
-          expect(result.valid).toBe(false);
-          expect(result.errors.on("pattern")).toEqual(["pattern"]);
-          return expect(this.schema.process({
-            pattern: "nospaces"
-          }).valid).toBe(true);
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              pattern: "nospaces"
+            }, function(err, result) {
+              return expect(result.valid).toBe(true);
+            });
+          });
         });
         return it("should validate the enum", function() {
-          var result;
-          result = this.schema.process({
-            "enum": "four"
+          runs(function() {
+            var _this = this;
+            return this.schema.process({
+              "enum": "four"
+            }, function(err, result) {
+              expect(result.valid).toBe(false);
+              return expect(result.errors.on("enum")).toEqual(["enum"]);
+            });
           });
-          expect(result.valid).toBe(false);
-          expect(result.errors.on("enum")).toEqual(["enum"]);
-          return expect(this.schema.process({
-            "enum": "two"
-          }).valid).toBe(true);
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              "enum": "two"
+            }, function(err, result) {
+              return expect(result.valid).toBe(true);
+            });
+          });
         });
       });
       describe("date and time", function() {
@@ -171,26 +222,35 @@
           });
         });
         it("should process a date", function() {
-          var result;
-          result = this.schema.process({
-            date: "2012-07-09"
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              date: "2012-07-09"
+            }, function(err, result) {
+              return expect(result.doc.date.getFullYear()).toEqual(2012);
+            });
           });
-          return expect(result.doc.date.getFullYear()).toEqual(2012);
         });
         it("should process a date-time", function() {
-          var result;
-          result = this.schema.process({
-            datetime: "2012-07-09T12:09:18Z"
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              datetime: "2012-07-09T12:09:18Z"
+            }, function(err, result) {
+              return expect(result.doc.datetime.getFullYear()).toEqual(2012);
+            });
           });
-          return expect(result.doc.datetime.getFullYear()).toEqual(2012);
         });
         return it("should validate a date", function() {
-          var result;
-          result = this.schema.process({
-            date: "09/09/2012"
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              date: "09/09/2012"
+            }, function(err, result) {
+              expect(result.valid).toBe(false);
+              return expect(result.errors.on("date")).toEqual(["format"]);
+            });
           });
-          expect(result.valid).toBe(false);
-          return expect(result.errors.on("date")).toEqual(["format"]);
         });
       });
       return describe("number validations", function() {
@@ -208,77 +268,126 @@
           });
         });
         it("should not validate an empty value", function() {
-          var result;
-          result = this.schema.process({
-            divisibleBy: ""
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              divisibleBy: ""
+            }, function(err, result) {
+              return expect(result.valid).toBe(true);
+            });
           });
-          return expect(result.valid).toBe(true);
         });
         it("should validate maximum", function() {
-          var result;
-          result = this.schema.process({
-            number: 100
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              number: 100
+            }, function(err, result) {
+              expect(result.valid).toBe(false);
+              return expect(result.errors.on("number")).toEqual(["maximum"]);
+            });
           });
-          expect(result.valid).toBe(false);
-          return expect(result.errors.on("number")).toEqual(["maximum"]);
         });
         it("should accept a value equal to maximum", function() {
-          return expect(this.schema.process({
-            number: 50
-          }).valid).toBe(true);
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              number: 50
+            }, function(err, result) {
+              return expect(result.valid).toBe(true);
+            });
+          });
         });
         it("should validate minimum", function() {
-          var result;
-          result = this.schema.process({
-            number: 0
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              number: 0
+            }, function(err, result) {
+              expect(result.valid).toBe(false);
+              return expect(result.errors.on("number")).toEqual(["minimum"]);
+            });
           });
-          expect(result.valid).toBe(false);
-          return expect(result.errors.on("number")).toEqual(["minimum"]);
         });
         it("should accept a value equal to minimum", function() {
-          return expect(this.schema.process({
-            number: 10
-          }).valid).toBe(true);
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              number: 10
+            }, function(err, result) {
+              return expect(result.valid).toBe(true);
+            });
+          });
         });
         it("should validate divisibleBy", function() {
-          var result;
-          result = this.schema.process({
-            number: 35
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              number: 35
+            }, function(err, result) {
+              expect(result.valid).toBe(false);
+              return expect(result.errors.on("number")).toEqual(["divisibleBy"]);
+            });
           });
-          expect(result.valid).toBe(false);
-          return expect(result.errors.on("number")).toEqual(["divisibleBy"]);
         });
         it("should validate both divisibleBy and minimum", function() {
-          var result;
-          result = this.schema.process({
-            number: 5
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              number: 5
+            }, function(err, result) {
+              expect(result.valid).toBe(false);
+              return expect(result.errors.on("number")).toEqual(["minimum", "divisibleBy"]);
+            });
           });
-          expect(result.valid).toBe(false);
-          return expect(result.errors.on("number")).toEqual(["minimum", "divisibleBy"]);
         });
         it("should handle excludeMinimum", function() {
           this.schema.properties.number.excludeMinimum = true;
-          expect(this.schema.process({
-            number: 20
-          }).valid).toBe(true);
-          expect(this.schema.process({
-            number: 10
-          }).valid).toBe(false);
-          return expect(this.schema.process({
-            number: 10
-          }).errors.on("number")).toEqual(["minimum"]);
+          runs(function() {
+            return this.schema.process({
+              number: 20
+            }, function(err, result) {
+              return expect(result.valid).toBe(true);
+            });
+          });
+          runs(function() {
+            return this.schema.process({
+              number: 10
+            }, function(err, result) {
+              return expect(result.valid).toBe(false);
+            });
+          });
+          return runs(function() {
+            return this.schema.process({
+              number: 10
+            }, function(err, result) {
+              return expect(result.errors.on("number")).toEqual(["minimum"]);
+            });
+          });
         });
         return it("should handle excludeMaximum", function() {
           this.schema.properties.number.excludeMaximum = true;
-          expect(this.schema.process({
-            number: 20
-          }).valid).toBe(true);
-          expect(this.schema.process({
-            number: 50
-          }).valid).toBe(false);
-          return expect(this.schema.process({
-            number: 50
-          }).errors.on("number")).toEqual(["maximum"]);
+          runs(function() {
+            return this.schema.process({
+              number: 20
+            }, function(err, result) {
+              return expect(result.valid).toBe(true);
+            });
+          });
+          runs(function() {
+            return this.schema.process({
+              number: 50
+            }, function(err, result) {
+              return expect(result.valid).toBe(false);
+            });
+          });
+          return runs(function() {
+            return this.schema.process({
+              number: 50
+            }, function(err, result) {
+              return expect(result.errors.on("number")).toEqual(["maximum"]);
+            });
+          });
         });
       });
     });
@@ -294,36 +403,55 @@
         });
       });
       it("should handle array values", function() {
-        var result;
-        result = this.schema.process({
-          array: [1, "2", 3]
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({
+            array: [1, "2", 3]
+          }, function(err, result) {
+            expect(result.valid).toBe(true);
+            return expect(result.doc.array).toEqual([1, "2", 3]);
+          });
         });
-        expect(result.valid).toBe(true);
-        return expect(result.doc.array).toEqual([1, "2", 3]);
       });
       it("should validate minItems", function() {
-        var result;
         this.schema.properties.array.minItems = 3;
-        result = this.schema.process({
-          array: [1, 2]
+        runs(function() {
+          var _this = this;
+          return this.schema.process({
+            array: [1, 2]
+          }, function(err, result) {
+            expect(result.valid).toBe(false);
+            return expect(result.errors.on("array")).toEqual(["minItems"]);
+          });
         });
-        expect(result.valid).toBe(false);
-        expect(result.errors.on("array")).toEqual(["minItems"]);
-        return expect(this.schema.process({
-          array: [1, 2, 3]
-        }).valid).toBe(true);
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({
+            array: [1, 2, 3]
+          }, function(err, result) {
+            return expect(result.valid).toBe(true);
+          });
+        });
       });
       it("should validate maxItems", function() {
-        var result;
         this.schema.properties.array.maxItems = 3;
-        result = this.schema.process({
-          array: [1, 2, 3, 4]
+        runs(function() {
+          var _this = this;
+          return this.schema.process({
+            array: [1, 2, 3, 4]
+          }, function(err, result) {
+            expect(result.valid).toBe(false);
+            return expect(result.errors.on("array")).toEqual(["maxItems"]);
+          });
         });
-        expect(result.valid).toBe(false);
-        expect(result.errors.on("array")).toEqual(["maxItems"]);
-        return expect(this.schema.process({
-          array: [1, 2, 3]
-        }).valid).toBe(true);
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({
+            array: [1, 2, 3]
+          }, function(err, result) {
+            return expect(result.valid).toBe(true);
+          });
+        });
       });
       return describe("with numerical items", function() {
         beforeEach(function() {
@@ -332,23 +460,30 @@
           };
         });
         it("should cast array values", function() {
-          var result;
-          result = this.schema.process({
-            array: ["1", "2", "3"]
+          console.log("Should cast array values");
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              array: ["1", "2", "3"]
+            }, function(err, result) {
+              expect(result.valid).toBe(true);
+              return expect(result.doc.array).toEqual([1, 2, 3]);
+            });
           });
-          expect(result.valid).toBe(true);
-          return expect(result.doc.array).toEqual([1, 2, 3]);
         });
         return it("should validate array values", function() {
-          var result;
           this.schema.properties.array.items.minimum = 3;
-          result = this.schema.process({
-            array: [1, 2, 3]
+          return runs(function() {
+            var _this = this;
+            return this.schema.process({
+              array: [1, 2, 3]
+            }, function(err, result) {
+              expect(result.valid).toBe(false);
+              expect(result.errors.on("array.0")).toEqual(["minimum"]);
+              expect(result.errors.on("array.1")).toEqual(["minimum"]);
+              return expect(result.errors.on("array.2")).toBe(void 0);
+            });
           });
-          expect(result.valid).toBe(false);
-          expect(result.errors.on("array.0")).toEqual(["minimum"]);
-          expect(result.errors.on("array.1")).toEqual(["minimum"]);
-          return expect(result.errors.on("array.2")).toBe(void 0);
         });
       });
     });
@@ -369,30 +504,39 @@
         });
       });
       it("should process an object", function() {
-        var result;
-        result = this.schema.process({
-          object: {
-            test: "Hello"
-          }
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({
+            object: {
+              test: "Hello"
+            }
+          }, function(err, result) {
+            return expect(result.doc.object.test).toEqual("Hello");
+          });
         });
-        return expect(result.doc.object.test).toEqual("Hello");
       });
       it("should validate properties on the object", function() {
-        var result;
         this.schema.properties.object.properties.test.minLength = 8;
-        result = this.schema.process({
-          object: {
-            test: "Hello"
-          }
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({
+            object: {
+              test: "Hello"
+            }
+          }, function(err, result) {
+            expect(result.valid).toBe(false);
+            return expect(result.errors.on("object.test")).toEqual(["minLength"]);
+          });
         });
-        expect(result.valid).toBe(false);
-        return expect(result.errors.on("object.test")).toEqual(["minLength"]);
       });
       return it("should not make the object required when an property is required", function() {
-        var result;
         this.schema.properties.object.properties.test.required = true;
-        result = this.schema.process({});
-        return expect(result.valid).toBe(true);
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({}, function(err, result) {
+            return expect(result.valid).toBe(true);
+          });
+        });
       });
     });
     return describe("resolving refs", function() {
@@ -426,52 +570,68 @@
             }
           }
         };
-        JsonSchema.resolver = function(uri, current) {
+        JsonSchema.resolver = function(uri, current, cb) {
           var attr;
           attr = schemas[uri];
           if (attr) {
-            return new JsonSchema(attr);
+            return cb(null, new JsonSchema(attr));
+          } else {
+            return cb();
           }
         };
-        return this.schema = JsonSchema.resolver("party");
+        return this.schema = new JsonSchema(schemas["party"]);
       });
       it("should resolve an object reference", function() {
-        var bad, result;
-        result = this.schema.process({
-          host: {
-            name: "Mathias"
-          }
+        runs(function() {
+          var _this = this;
+          return this.schema.process({
+            host: {
+              name: "Mathias"
+            }
+          }, function(err, result) {
+            expect(result.doc.host.name).toEqual("Mathias");
+            return expect(result.valid).toBe(true);
+          });
         });
-        expect(result.doc.host.name).toEqual("Mathias");
-        expect(result.valid).toBe(true);
-        bad = this.schema.process({
-          host: {}
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({
+            host: {}
+          }, function(err, result) {
+            expect(result.valid).toBe(false);
+            return expect(result.errors.on("host.name")).toEqual(["required"]);
+          });
         });
-        expect(bad.valid).toBe(false);
-        return expect(bad.errors.on("host.name")).toEqual(["required"]);
       });
       return it("should resolve array references", function() {
-        var bad, result;
-        result = this.schema.process({
-          guests: [
-            {
-              name: "Irene"
-            }, {
-              name: "Julio"
-            }
-          ]
+        runs(function() {
+          var _this = this;
+          return this.schema.process({
+            guests: [
+              {
+                name: "Irene"
+              }, {
+                name: "Julio"
+              }
+            ]
+          }, function(err, result) {
+            expect(result.doc.guests[0].name).toEqual("Irene");
+            return expect(result.doc.guests[1].name).toEqual("Julio");
+          });
         });
-        expect(result.doc.guests[0].name).toEqual("Irene");
-        expect(result.doc.guests[1].name).toEqual("Julio");
-        bad = this.schema.process({
-          guests: [
-            {
-              name: "Irene"
-            }, {}
-          ]
+        return runs(function() {
+          var _this = this;
+          return this.schema.process({
+            guests: [
+              {
+                name: "Irene"
+              }, {}
+            ]
+          }, function(err, result) {
+            expect(result.valid).toBe(false);
+            return expect(result.errors.on("guests.1.name")).toEqual(["required"]);
+          });
         });
-        expect(bad.valid).toBe(false);
-        return expect(bad.errors.on("guests.1.name")).toEqual(["required"]);
       });
     });
   });

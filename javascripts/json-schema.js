@@ -101,11 +101,11 @@
       this.attr = attr;
     }
 
-    JsonProperty.prototype.cast = function(val) {
-      return val;
+    JsonProperty.prototype.cast = function(val, cb) {
+      return cb(null, val);
     };
 
-    JsonProperty.prototype.errors = function(val) {
+    JsonProperty.prototype.errors = function(val, cb) {
       var errors;
       errors = new JsonErrors;
       if (!this.validate("required", function(r) {
@@ -113,18 +113,30 @@
       })) {
         errors.add("required");
       }
-      return errors;
+      return cb(null, errors);
     };
 
-    JsonProperty.prototype.process = function(val) {
-      var errors;
-      val = val != null ? this.cast(val) : this.attr["default"];
-      errors = this.errors(val);
-      return {
-        valid: errors.isEmpty(),
-        doc: val,
-        errors: errors
+    JsonProperty.prototype.process = function(val, cb) {
+      var valCb,
+        _this = this;
+      valCb = val != null ? this.cast : function(val, cb) {
+        return cb(null, this.attr["default"]);
       };
+      return valCb.call(this, val, function(err, val) {
+        if (err) {
+          return cb(err);
+        }
+        return _this.errors(val, function(err, errors) {
+          if (err) {
+            return cb(err);
+          }
+          return cb(null, {
+            valid: errors.isEmpty(),
+            doc: val,
+            errors: errors
+          });
+        });
+      });
     };
 
     JsonProperty.prototype.validate = function(attr, fn) {
@@ -147,47 +159,51 @@
       return JsonString.__super__.constructor.apply(this, arguments);
     }
 
-    JsonString.prototype.cast = function(val) {
+    JsonString.prototype.cast = function(val, cb) {
       switch (this.attr.format) {
         case "date":
         case "date-time":
-          return new Date(val);
+          return cb(null, new Date(val));
         default:
-          return val.toString();
+          return cb(null, val.toString());
       }
     };
 
-    JsonString.prototype.errors = function(val) {
-      var errors;
-      errors = JsonString.__super__.errors.call(this, val);
-      if (val != null) {
-        if (!this.validate("minLength", function(len) {
-          return val.length >= len;
-        })) {
-          errors.add("minLength");
+    JsonString.prototype.errors = function(val, cb) {
+      var _this = this;
+      return JsonString.__super__.errors.call(this, val, function(err, errors) {
+        if (err) {
+          return cb(err);
         }
-        if (!this.validate("maxLength", function(len) {
-          return val.length <= len;
-        })) {
-          errors.add("maxLength");
+        if (val != null) {
+          if (!_this.validate("minLength", function(len) {
+            return val.length >= len;
+          })) {
+            errors.add("minLength");
+          }
+          if (!_this.validate("maxLength", function(len) {
+            return val.length <= len;
+          })) {
+            errors.add("maxLength");
+          }
+          if (!_this.validate("pattern", function(pat) {
+            return new RegExp(pat).test(val);
+          })) {
+            errors.add("pattern");
+          }
+          if (!_this.validate("enum", function(opts) {
+            return __indexOf.call(opts, val) >= 0;
+          })) {
+            errors.add("enum");
+          }
+          if (!_this.validate("format", function(format) {
+            return this.validFormat(format, val);
+          })) {
+            errors.add("format");
+          }
         }
-        if (!this.validate("pattern", function(pat) {
-          return new RegExp(pat).test(val);
-        })) {
-          errors.add("pattern");
-        }
-        if (!this.validate("enum", function(opts) {
-          return __indexOf.call(opts, val) >= 0;
-        })) {
-          errors.add("enum");
-        }
-        if (!this.validate("format", function(format) {
-          return this.validFormat(format, val);
-        })) {
-          errors.add("format");
-        }
-      }
-      return errors;
+        return cb(null, errors);
+      });
     };
 
     JsonString.prototype.validFormat = function(format, val) {
@@ -213,44 +229,44 @@
       return JsonNumber.__super__.constructor.apply(this, arguments);
     }
 
-    JsonNumber.prototype.cast = function(val) {
+    JsonNumber.prototype.cast = function(val, cb) {
       val = parseFloat(val);
-      if (isNaN(val)) {
-        return null;
-      } else {
-        return val;
-      }
+      return cb(null, isNaN(val) ? null : val);
     };
 
-    JsonNumber.prototype.errors = function(val) {
-      var errors;
-      errors = JsonNumber.__super__.errors.call(this, val);
-      if (val != null) {
-        if (!this.validate("minimum", function(min) {
-          if (this.attr.excludeMinimum) {
-            return val > min;
-          } else {
-            return val >= min;
+    JsonNumber.prototype.errors = function(val, cb) {
+      var _this = this;
+      return JsonNumber.__super__.errors.call(this, val, function(err, errors) {
+        if (err) {
+          return cb(err);
+        }
+        if (val != null) {
+          if (!_this.validate("minimum", function(min) {
+            if (this.attr.excludeMinimum) {
+              return val > min;
+            } else {
+              return val >= min;
+            }
+          })) {
+            errors.add("minimum");
           }
-        })) {
-          errors.add("minimum");
-        }
-        if (!this.validate("maximum", function(max) {
-          if (this.attr.excludeMaximum) {
-            return val < max;
-          } else {
-            return val <= max;
+          if (!_this.validate("maximum", function(max) {
+            if (this.attr.excludeMaximum) {
+              return val < max;
+            } else {
+              return val <= max;
+            }
+          })) {
+            errors.add("maximum");
           }
-        })) {
-          errors.add("maximum");
+          if (!_this.validate("divisibleBy", function(div) {
+            return val % div === 0;
+          })) {
+            errors.add("divisibleBy");
+          }
         }
-        if (!this.validate("divisibleBy", function(div) {
-          return val % div === 0;
-        })) {
-          errors.add("divisibleBy");
-        }
-      }
-      return errors;
+        return cb(null, errors);
+      });
     };
 
     return JsonNumber;
@@ -265,13 +281,9 @@
       return JsonInteger.__super__.constructor.apply(this, arguments);
     }
 
-    JsonInteger.prototype.cast = function(val) {
+    JsonInteger.prototype.cast = function(val, cb) {
       val = parseInt(val, 10);
-      if (isNaN(val)) {
-        return null;
-      } else {
-        return val;
-      }
+      return cb(null, isNaN(val) ? null : val);
     };
 
     return JsonInteger;
@@ -282,53 +294,109 @@
 
     __extends(JsonArray, _super);
 
-    function JsonArray(attr) {
-      var ref;
-      this.attr = attr;
-      if (this.attr.items) {
-        ref = this.attr.items["$ref"];
-        this.itemSchema = ref ? JsonSchema.resolver(this.attr.items["$ref"], this) : JsonProperty["for"](this.attr.items);
-      }
+    function JsonArray() {
+      return JsonArray.__super__.constructor.apply(this, arguments);
     }
 
-    JsonArray.prototype.cast = function(val) {
-      var cast, item, _i, _len, _results,
-        _this = this;
-      cast = this.itemSchema ? function(v) {
-        return _this.itemSchema.cast(v);
-      } : function(v) {
-        return v;
-      };
-      _results = [];
-      for (_i = 0, _len = val.length; _i < _len; _i++) {
-        item = val[_i];
-        _results.push(cast(item));
-      }
-      return _results;
+    JsonArray.prototype.cast = function(val, cb) {
+      return this.itemSchema(function(err, schema) {
+        var count, index, item, items, _i, _len, _results,
+          _this = this;
+        console.log("Got itemSchema %o", schema);
+        if (!schema) {
+          return cb(null, (function() {
+            var _i, _len, _results;
+            _results = [];
+            for (_i = 0, _len = val.length; _i < _len; _i++) {
+              item = val[_i];
+              _results.push(item);
+            }
+            return _results;
+          })());
+        }
+        items = [];
+        count = val.length;
+        _results = [];
+        for (index = _i = 0, _len = val.length; _i < _len; index = ++_i) {
+          item = val[index];
+          _results.push((function(item, index) {
+            return schema.cast(item, function(err, itemVal) {
+              if (err) {
+                cb(err);
+                return cb = function() {};
+              }
+              items[index] = itemVal;
+              if (--count === 0) {
+                return cb(null, items);
+              }
+            });
+          })(item, index));
+        }
+        return _results;
+      });
     };
 
-    JsonArray.prototype.errors = function(val) {
-      var errors, i, item, _i, _len;
-      errors = JsonArray.__super__.errors.call(this, val);
-      if (val != null) {
-        if (!this.validate("minItems", function(min) {
-          return val.length >= min;
-        })) {
-          errors.add("minItems");
-        }
-        if (!this.validate("maxItems", function(max) {
-          return val.length <= max;
-        })) {
-          errors.add("maxItems");
-        }
-        if (this.itemSchema) {
-          for (i = _i = 0, _len = val.length; _i < _len; i = ++_i) {
-            item = val[i];
-            errors.add("" + i, this.itemSchema.errors(item));
+    JsonArray.prototype.errors = function(val, cb) {
+      var _this = this;
+      return JsonArray.__super__.errors.call(this, val, function(err, errors) {
+        if (val != null) {
+          if (!_this.validate("minItems", function(min) {
+            return val.length >= min;
+          })) {
+            errors.add("minItems");
           }
+          if (!_this.validate("maxItems", function(max) {
+            return val.length <= max;
+          })) {
+            errors.add("maxItems");
+          }
+          return _this.itemSchema(function(err, schema) {
+            var count, i, item, _i, _len, _results;
+            if (!schema) {
+              return cb(null, errors);
+            }
+            count = val.length;
+            _results = [];
+            for (i = _i = 0, _len = val.length; _i < _len; i = ++_i) {
+              item = val[i];
+              _results.push((function(item, i) {
+                return schema.errors(item, function(err, itemErrors) {
+                  if (err) {
+                    cb(err);
+                    return cb = function() {};
+                  }
+                  errors.add("" + i, itemErrors);
+                  if (--count === 0) {
+                    return cb(null, errors);
+                  }
+                });
+              })(item, i));
+            }
+            return _results;
+          });
         }
+      });
+    };
+
+    JsonArray.prototype.itemSchema = function(cb) {
+      var _this = this;
+      if (!this.attr.items) {
+        return cb(null, null);
       }
-      return errors;
+      if (this.attr.items["$ref"]) {
+        if (this._itemSchema) {
+          return cb(null, this._itemSchema);
+        }
+        return JsonSchema.resolver(this.attr.items["$ref"], this, function(err, schema) {
+          if (err) {
+            return cb(err);
+          }
+          _this._itemSchema = schema;
+          return cb(null, schema);
+        });
+      } else {
+        return cb(null, JsonProperty["for"](this.attr.items));
+      }
     };
 
     return JsonArray;
@@ -342,49 +410,117 @@
     function JsonObject(attr) {
       this.attr = attr;
       this.properties = attr.properties;
-      if (this.properties["$ref"]) {
-        this.ref = JsonSchema.resolver(this.properties["$ref"].replace(/#.+$/, ''), this);
-      }
     }
 
-    JsonObject.prototype.cast = function(val) {
-      var attrs, key, obj, _ref;
-      if (this.ref) {
-        return this.ref.cast(val);
-      }
-      obj = {};
-      _ref = this.properties;
-      for (key in _ref) {
-        attrs = _ref[key];
-        obj[key] = val && (key in val) ? JsonProperty["for"](attrs).cast(val[key]) : attrs["default"];
-      }
-      return obj;
+    JsonObject.prototype.cast = function(val, cb) {
+      var _this = this;
+      return this.refSchema(function(err, schema) {
+        var attrs, count, key, obj, _ref, _results;
+        if (err) {
+          return cb(err);
+        }
+        if (schema) {
+          return schema.cast(val, cb);
+        }
+        obj = {};
+        count = Object.keys(_this.properties).length;
+        _ref = _this.properties;
+        _results = [];
+        for (key in _ref) {
+          attrs = _ref[key];
+          _results.push((function(key, attrs) {
+            var caster;
+            caster = val && (key in val) ? JsonProperty["for"](attrs) : {
+              cast: function(_, cb) {
+                return cb(null, attrs["default"]);
+              }
+            };
+            return caster.cast(val[key], function(err, castedVal) {
+              if (err) {
+                cb(err);
+                return cb = function() {};
+              }
+              obj[key] = castedVal;
+              if (--count === 0) {
+                return cb(null, obj);
+              }
+            });
+          })(key, attrs));
+        }
+        return _results;
+      });
     };
 
-    JsonObject.prototype.process = function(val) {
-      if (this.ref) {
-        return this.ref.process(val);
-      } else {
-        return JsonObject.__super__.process.call(this, val);
-      }
+    JsonObject.prototype.process = function(val, cb) {
+      var _this = this;
+      return this.refSchema(function(err, schema) {
+        if (err) {
+          return cb(err);
+        }
+        if (schema) {
+          return schema.process(val, cb);
+        } else {
+          return JsonObject.__super__.process.call(_this, val, cb);
+        }
+      });
     };
 
-    JsonObject.prototype.errors = function(val) {
-      var attrs, err, errors, key, _ref;
+    JsonObject.prototype.errors = function(val, cb) {
+      var _this = this;
       if (val == null) {
-        return JsonObject.__super__.errors.call(this, val);
+        return JsonObject.__super__.errors.call(this, val, cb);
       }
-      if (this.ref) {
-        return this.ref.errors(val);
+      return this.refSchema(function(err, schema) {
+        if (err) {
+          return cb(err);
+        }
+        if (schema) {
+          return schema.errors(val, cb);
+        }
+        return JsonObject.__super__.errors.call(_this, val, function(err, errors) {
+          var attrs, count, key, _ref, _results;
+          if (err) {
+            return cb(err);
+          }
+          count = Object.keys(_this.properties).length;
+          _ref = _this.properties;
+          _results = [];
+          for (key in _ref) {
+            attrs = _ref[key];
+            _results.push((function(key, attrs) {
+              return JsonProperty["for"](attrs).errors(val && val[key], function(err, propErrors) {
+                if (err) {
+                  cb(err);
+                  return cb = function() {};
+                }
+                errors.add(key, propErrors);
+                if (--count === 0) {
+                  return cb(null, errors);
+                }
+              });
+            })(key, attrs));
+          }
+          return _results;
+        });
+      });
+    };
+
+    JsonObject.prototype.refSchema = function(cb) {
+      var _this = this;
+      if (this._refSchema) {
+        return cb(null, this._refSchema);
       }
-      errors = JsonObject.__super__.errors.call(this, val);
-      _ref = this.properties;
-      for (key in _ref) {
-        attrs = _ref[key];
-        err = JsonProperty["for"](attrs).errors(val && val[key]);
-        errors.add(key, err);
+      if (this.properties["$ref"]) {
+        return JsonSchema.resolver(this.properties["$ref"].replace(/#.+$/, ''), this, function(err, schema) {
+          if (err) {
+            return cb(err);
+          }
+          _this._refSchema = schema;
+          return cb(null, schema);
+        });
+      } else {
+        return cb(null, null);
       }
-      return errors;
     };
 
     return JsonObject;
@@ -423,7 +559,7 @@
 
   })(JsonObject);
 
-  JsonSchema.resolver = function(url) {
+  JsonSchema.resolver = function(url, schema, cb) {
     if (!JsonSchema.resolver) {
       throw "No resolver defined for references";
     }
