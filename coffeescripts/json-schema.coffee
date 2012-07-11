@@ -79,6 +79,7 @@ class JsonErrors
       @add(newProp, err)
 
 #### JsonProperty
+
 # The base class in the JsonSchema hierachy.
 class JsonProperty
   constructor: (@attr) ->
@@ -102,9 +103,10 @@ class JsonProperty
     errors: errors
 
   # Helper method to perform a validtion if an attribute is present
-  validate: (attr, fn) -> if (attr of @attr) then fn.call(this, @attr[attr]) else true
+  validate: (attr, fn) -> if (attr of @attr) and @attr[attr] != null then fn.call(this, @attr[attr]) else true
 
 #### JsonString
+
 # A property of type "string"
 class JsonString extends JsonProperty
   cast: (val) ->
@@ -134,6 +136,7 @@ class JsonString extends JsonProperty
         true
 
 #### JsonNumber
+
 # A property of type "number"
 class JsonNumber extends JsonProperty
   cast: (val) ->
@@ -149,6 +152,7 @@ class JsonNumber extends JsonProperty
     errors
 
 #### JsonInteger
+
 # A property of type "integer"
 class JsonInteger extends JsonNumber
   cast: (val) -> 
@@ -156,6 +160,7 @@ class JsonInteger extends JsonNumber
     if isNaN(val) then null else val
 
 #### JsonArray
+
 # A property of class "array".
 # If the array items are specified with a "$ref" ({items: {"$ref": "uri"}}) the JsonSchema.resolver will
 # be used to return a schema object for the items.
@@ -179,6 +184,7 @@ class JsonArray extends JsonProperty
     errors
 
 #### JsonObject
+
 # A property of type "object".
 # If the properties are specified with a "$ref" (properties: {"$ref" : "uri"}) the 
 # JsonSchema.resolver will be used to lookup a schema object used for cast, errors
@@ -228,6 +234,7 @@ JsonProperty.for = (attr) ->
 
 
 #### JsonSchema
+
 # The public interface to the JsonSchema processor.
 # Requires the main schema to be of type "object"
 class JsonSchema extends JsonObject
@@ -236,6 +243,7 @@ class JsonSchema extends JsonObject
     super(attr)
 
 #### The JsonSchema.resolver
+
 # This function will be used to resolve any url used in "$ref" references.
 # The function should return an object responding to cast, errors and process.
 JsonSchema.resolver = (url) ->
@@ -243,6 +251,7 @@ JsonSchema.resolver = (url) ->
   throw "No resolver defined for references" unless JsonSchema.resolver
 
 
+# Export public interface
 e = (exports? && exports) || (window? && window)
 e.JsonSchema = JsonSchema
 e.JsonErrors = JsonErrors

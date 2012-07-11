@@ -128,7 +128,7 @@
     };
 
     JsonProperty.prototype.validate = function(attr, fn) {
-      if (attr in this.attr) {
+      if ((attr in this.attr) && this.attr[attr] !== null) {
         return fn.call(this, this.attr[attr]);
       } else {
         return true;

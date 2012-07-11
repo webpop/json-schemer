@@ -392,7 +392,6 @@
         var result;
         this.schema.properties.object.properties.test.required = true;
         result = this.schema.process({});
-        console.log(result);
         return expect(result.valid).toBe(true);
       });
     });

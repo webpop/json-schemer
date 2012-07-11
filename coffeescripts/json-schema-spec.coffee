@@ -247,7 +247,6 @@ describe "JsonSchema", ->
     it "should not make the object required when an property is required", ->
       @schema.properties.object.properties.test.required = true
       result = @schema.process({})
-      console.log(result)
       expect(result.valid).toBe(true)
 
   describe "resolving refs", ->

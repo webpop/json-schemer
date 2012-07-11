@@ -1,0 +1,9 @@
+{ "name": "json-schemer"
+, "description": "A JSON Schema validator and processor."
+, "keywords": ["json-schema", "json", "schema"]
+, "version": "0.1.0"
+, "author": "Mathias Biilmann Christensen <info@mathias-biilmann.net>"
+, "repository": { "type": "git"
+                , "url": "https://github.com/webpop/json-schemer.git"}
+, "main": "./javascripts/json-schema"
+}
