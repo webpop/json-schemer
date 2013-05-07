@@ -14,6 +14,9 @@
             age: {
               type: "integer",
               maximum: 125
+            },
+            alive: {
+              type: "boolean"
             }
           }
         });
@@ -21,7 +24,7 @@
       it("should process an empty object", function() {
         var result;
         result = this.schema.process({});
-        expect(Object.keys(result.doc)).toEqual(['name', 'age']);
+        expect(Object.keys(result.doc)).toEqual(['name', 'age', 'alive']);
         expect(result.doc.name).toBe(void 0);
         expect(result.doc.age).toBe(void 0);
         return expect(result.valid).toBe(true);
@@ -32,7 +35,7 @@
           name: "Mathias",
           age: 35
         });
-        expect(Object.keys(result.doc)).toEqual(["name", "age"]);
+        expect(Object.keys(result.doc)).toEqual(["name", "age", "alive"]);
         expect(result.doc.name).toEqual("Mathias");
         expect(result.doc.age).toEqual(35);
         return expect(result.valid).toBe(true);
@@ -54,11 +57,33 @@
         expect(result.valid).toBe(false);
         return expect(result.errors.all()).toEqual([["age", ["maximum"]]]);
       });
-      return it("should use a default value", function() {
+      it("should use a default value", function() {
         var result;
         this.schema.properties.name["default"] = "Default";
         result = this.schema.process({});
         return expect(result.doc.name).toEqual("Default");
+      });
+      it("should not set an undefined boolean value", function() {
+        var result;
+        result = this.schema.process({
+          age: 200
+        });
+        return expect(result.doc.alive).toEqual(void 0);
+      });
+      return it("should set a boolean", function() {
+        var result;
+        result = this.schema.process({
+          alive: true
+        });
+        expect(result.doc.alive).toEqual(true);
+        result = this.schema.process({
+          alive: "true"
+        });
+        expect(result.doc.alive).toEqual(true);
+        result = this.schema.process({
+          alive: "false"
+        });
+        return expect(result.doc.alive).toEqual(false);
       });
     });
     describe("validations", function() {

@@ -9,17 +9,18 @@ describe "JsonSchema", ->
           age:
             type: "integer"
             maximum: 125
+          alive: {type: "boolean"}
 
     it "should process an empty object", ->
       result = @schema.process({})
-      expect(Object.keys(result.doc)).toEqual(['name', 'age'])
+      expect(Object.keys(result.doc)).toEqual(['name', 'age', 'alive'])
       expect(result.doc.name).toBe(undefined)
       expect(result.doc.age).toBe(undefined)
       expect(result.valid).toBe(true)
 
     it "should process a valid object", ->
       result = @schema.process({name: "Mathias", age: 35})
-      expect(Object.keys(result.doc)).toEqual(["name", "age"])
+      expect(Object.keys(result.doc)).toEqual(["name", "age", "alive"])
       expect(result.doc.name).toEqual("Mathias")
       expect(result.doc.age).toEqual(35)
       expect(result.valid).toBe(true)
@@ -40,6 +41,18 @@ describe "JsonSchema", ->
       result = @schema.process({})
       expect(result.doc.name).toEqual("Default")
 
+    it "should not set an undefined boolean value", ->
+      result = @schema.process({age: 200})
+      expect(result.doc.alive).toEqual(undefined)
+
+    it "should set a boolean", ->
+      result = @schema.process({alive: true})
+      expect(result.doc.alive).toEqual(true)
+      result = @schema.process({alive: "true"})
+      expect(result.doc.alive).toEqual(true)
+      result = @schema.process({alive: "false"})
+      expect(result.doc.alive).toEqual(false)
+      
   describe "validations", ->
     describe "optional and required fields", ->
       beforeEach ->

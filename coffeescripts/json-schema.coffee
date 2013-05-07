@@ -159,6 +159,14 @@ class JsonInteger extends JsonNumber
     val = parseInt(val, 10)
     if isNaN(val) then null else val
 
+#### JsonBoolean
+
+# A property of type "boolean"
+class JsonBoolean extends JsonProperty
+  cast: (val) ->
+    return if val == undefined
+    if val == "false" || val == "null" || val == "0" then false else if val then true else false
+
 #### JsonArray
 
 # A property of class "array".
@@ -225,6 +233,7 @@ JsonProperty.for = (attr) ->
     "string"  : JsonString
     "number"  : JsonNumber
     "integer" : JsonInteger
+    "boolean" : JsonBoolean
     "array"   : JsonArray
     "object"  : JsonObject
     
